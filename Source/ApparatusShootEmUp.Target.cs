@@ -10,6 +10,6 @@ public class ApparatusShootEmUpTarget : TargetRules
 		Type = TargetType.Game;
 		DefaultBuildSettings = BuildSettingsVersion.V2;
 
-		ExtraModuleNames.AddRange( new string[] { "ApparatusShootEmUp" } );
+		ExtraModuleNames.AddRange( new string[] { "ApparatusShootEmUp", "ApparatistRuntime" } );
 	}
 }
