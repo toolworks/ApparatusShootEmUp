@@ -1,0 +1,3 @@
+[submodule "Plugins/Apparatist"]
+	path = Plugins/Apparatist
+	url = git@github.com:toolworks/Apparatist.git
