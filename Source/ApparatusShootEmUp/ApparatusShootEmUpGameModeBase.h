@@ -40,7 +40,8 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 		{
 			GetMechanism()->Operate([=](ISolidSubjective* Subjective, const FPlayerTrait& Player, const FLocated& Located)
 			{
-				Subjective->GetActor()->SetActorLocation(Located.Location);
+				const auto Actor = CastChecked<APlayerPawn>(Subjective->GetActor());
+				Actor->SetActorLocation(Located.Location);
 			});
 		}
 	}
