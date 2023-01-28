@@ -8,7 +8,7 @@ public class ApparatusShootEmUp : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "ApparatistRuntime" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "ApparatusRuntime", "ApparatistRuntime" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
