@@ -1,8 +1,8 @@
 {
 	"FileVersion": 3,
 	"EngineAssociation": "4.27",
-	"Category": "",
-	"Description": "",
+	"Category": "Templates",
+	"Description": "A dedicated Apparatus sample project of a shoot'em'up-like experience.",
 	"Modules": [
 		{
 			"Name": "ApparatusShootEmUp",
