@@ -203,6 +203,13 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 	FRuntimeFloatCurve AggressionRadiusByEnemiesCount;
 
 	/**
+	 * The roaming influence towards the player in relation
+	 * to the current enemy count.
+	 */
+	UPROPERTY(EditAnywhere, Category = Enemies)
+	FRuntimeFloatCurve RoamingToTargetInfluenceByEnemiesCount;
+
+	/**
 	 * The number of health points restored per seconds.
 	 */
 	UPROPERTY(EditAnywhere, Category = Player)
@@ -259,6 +266,12 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 		const auto PlayerSubject = GetSingletonSubject<FPlayerTrait>(Mechanism);
 		const auto HitEffectCurve = EnemyHitEmissionByTimeout.GetRichCurveConst();
 
+		int32 EnemiesCount = 0;
+		if (AEnemySpawner::GetInstance())
+		{
+			EnemiesCount = AEnemySpawner::GetInstance()->GetEnemiesNum();
+		}
+
 		// General after-spawn initialization.
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpAfterSpawn);
@@ -308,7 +321,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 		// Shooting.
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpShooting);
-			const auto AdditionalStreamsCount = AdditionalShootingStreamByEnemiesCount.Evaluate(AEnemySpawner::GetInstance()->GetEnemiesNum());
+			const auto AdditionalStreamsCount = AdditionalShootingStreamByEnemiesCount.Evaluate(EnemiesCount);
 			static const auto Filter = FFilter::Make<FShoot, FShoots, FLocated>().Exclude<FDying>();
 			Mechanism->Operate<FUnsafeChain>(Filter,
 			[=](FShoots& Shoots, const FShoot& Shoot, const FLocated& Located)
@@ -341,10 +354,10 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 			});
 		}
 
-		// Movement.
+		// Non-enemy movement.
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpMovement);
-			static const auto Filter = FFilter::Make<FMove, FLocated>().Exclude<FProjectile, FDying>();
+			static const auto Filter = FFilter::Make<FMove, FLocated>().Exclude<FProjectile, FDying, FEnemy>();
 			Mechanism->OperateConcurrently(Filter,
 			[=](const FMove& Move, FLocated& Located, const FSpeed* Speed)
 			{
@@ -473,7 +486,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 			});
 		}
 
-		// Enemies reaching the player and statistics.
+		// Enemies reaching the player and enemy statistics.
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpEnemiesReaching);
 			TArray<std::atomic<int32>> SafeEnemyCountsByKind;
@@ -484,7 +497,9 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 			}
 			if (PlayerSubject && PlayerSubject.HasTrait<FBubbleSphere>())
 			{
-				const auto AggressionRadius = AggressionRadiusByEnemiesCount.GetRichCurveConst()->Eval(AEnemySpawner::GetInstance()->GetEnemiesNum());
+				const auto RoamingToTargetCurve = RoamingToTargetInfluenceByEnemiesCount.GetRichCurveConst();
+				const auto AggressionRadius = AggressionRadiusByEnemiesCount.GetRichCurveConst()->Eval(EnemiesCount);
+				const auto AggressionRadiusSquared = AggressionRadius * AggressionRadius;
 				static constexpr float ReachTolerance = 1;
 				const auto Target = PlayerSubject.GetTraitRef<EParadigm::Unsafe, FLocated>().GetLocation();
 				const auto TargetRadius = PlayerSubject.GetTraitRef<EParadigm::Unsafe, FBubbleSphere>().Radius;
@@ -492,19 +507,20 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 				Mechanism->OperateConcurrently(Filter,
 				[&](FSolidSubjectHandle  EnemySubject,
 					const FRendering&    Rendering,
+					const FSpeed&        Speed,
+					FMove&               Move,
 					FEnemy&              Enemy,
-					const FLocated&      Located,
+					FLocated&            Located,
 					const FBubbleSphere& BubbleSphere,
 					FAttacks*            Attacks)
 				{
 					SafeEnemyCountsByKind[Enemy.KindId].fetch_add(1, std::memory_order_relaxed);
 					auto Delta = Target - Located.GetLocation();
-					auto Distance = Delta.Size();
-					if (Distance < AggressionRadius)
+					auto Distance = Delta.SizeSquared();
+					if (Distance < AggressionRadiusSquared)
 					{
-						bool bCanAttack = false;
-						Distance -= BubbleSphere.Radius + TargetRadius;
-						if ((Attacks != nullptr) && (Distance < Attacks->Range))
+						Distance = FMath::Sqrt(Distance);
+						if ((Attacks != nullptr) && (Distance - (BubbleSphere.Radius + TargetRadius) < Attacks->Range))
 						{
 							// We're able to attack now (in theory).
 							if ((!EnemySubject.HasTrait<FAttacking>()) )
@@ -515,24 +531,33 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 						else
 						{
 							// Try to reach the player...
-							auto Direction = Delta.GetSafeNormal2D();
-							auto& Move = EnemySubject.GetTraitRef<FMove>();
-							Move.Velocity = Direction;
+							if (Distance > SMALL_NUMBER)
+							{
+								Move.Velocity = Delta / Distance;
+							}
 						}
 					}
 					else
 					{
-						// Roam freely.
+						// Roam freely, but with tendency towards the target.
 						if (Enemy.RoamingTimeout < DeltaTime)
 						{
-							Enemy.RoamingTimeout = FMath::RandRange(2.0f, 10.0f);
-							EnemySubject.GetTraitRef<FMove>().Velocity = FVector(AEnemySpawner::VRand2D(), 0.0f);
+							Distance = FMath::Sqrt(Distance);
+							Enemy.RoamingTimeout = FMath::RandRange(2.0f, 15.0f);
+							Move.Velocity = FVector(AEnemySpawner::VRand2D(), 0.0f) + Delta * (RoamingToTargetCurve->Eval(EnemiesCount) / Distance);
+							if (!Move.Velocity.Normalize())
+							{
+								Move.Velocity = FVector::ForwardVector;
+							}
 						}
 						else
 						{
 							Enemy.RoamingTimeout -= DeltaTime;
 						}
 					}
+
+					// Perform enemy movement right here for performance reasons:
+					Located.Location += Move.Velocity * Speed.Value * DeltaTime;
 				}, ThreadsCount, 32);
 			}
 			else
@@ -542,8 +567,10 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 				Mechanism->OperateConcurrently(Filter,
 				[&](FSolidSubjectHandle  EnemySubject,
 					const FRendering&    Rendering,
+					const FSpeed&        Speed,
+					FMove&               Move,
 					FEnemy&              Enemy,
-					const FLocated&      Located,
+					FLocated&            Located,
 					const FBubbleSphere& BubbleSphere,
 					FAttacks*            Attacks)
 				{
@@ -552,12 +579,14 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 					if (Enemy.RoamingTimeout < DeltaTime)
 					{
 						Enemy.RoamingTimeout = FMath::RandRange(2.0f, 10.0f);
-						EnemySubject.GetTraitRef<FMove>().Velocity = FVector(AEnemySpawner::VRand2D(), 0.0f);
+						Move.Velocity = FVector(AEnemySpawner::VRand2D(), 0.0f);
 					}
 					else
 					{
 						Enemy.RoamingTimeout -= DeltaTime;
 					}
+					// Perform enemy movement right here for performance reasons:
+					Located.Location += Move.Velocity * Speed.Value * DeltaTime;
 				}, ThreadsCount, 32);
 			}
 			for (int32 i = 0; i < EnemySpawner->EnemyCountsByKind.Num(); ++i)
