@@ -20,7 +20,7 @@ APlayerPawn::APlayerPawn()
 	Subjective->ObtainTrait<FBubbleSphere>();
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("Camera");
 	CameraComponent->AttachToComponent(Root, FAttachmentTransformRules::KeepRelativeTransform);
-
+	SetRootComponent(Root);
 	PrimaryActorTick.bCanEverTick = true;
 }
 
