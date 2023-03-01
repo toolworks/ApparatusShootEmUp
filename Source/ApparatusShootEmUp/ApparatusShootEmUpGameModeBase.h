@@ -391,7 +391,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 					Located.Location += Move.Velocity * Speed.Value * DeltaTime / ProjectileSubSteps;
 					static const auto EnemyFilter = FFilter::Make<FEnemy, FHealth>().Exclude(DyingFlag);
 					const auto Overlappers = ABubbleCage::GetOverlapping(Located.Location, Projectile.Radius, EnemyFilter);
-					for (const auto Overlapper : Overlappers)
+					for (const auto& Overlapper : Overlappers)
 					{
 						const auto& BubbleSphere = Overlapper.GetTraitRef<FBubbleSphere, EParadigm::Unsafe>();
 						const auto Health = Overlapper.GetTraitPtr<FHealth, EParadigm::Unsafe>();
