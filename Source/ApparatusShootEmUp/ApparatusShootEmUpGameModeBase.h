@@ -175,6 +175,12 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 	float Gravity = 200;
 
 	/**
+	 * The maximum lifetime of a projectile.
+	 */
+	UPROPERTY(EditAnywhere, Category = Projectiles)
+	float ProjectileLifetime = 10;
+
+	/**
 	 * The number of sub-steps for the projectile shooting model.
 	 * 
 	 * We need sub-stepping here, cause the bullets move really fast.
@@ -378,12 +384,18 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 			std::atomic<int32> SafeScore{Score};
 			Mechanism->OperateConcurrently(
 			[&](FSolidSubjectHandle ProjectileHandle,
-				FLocated&          Located,
-				const FProjectile& Projectile,
-				const FMove&       Move,
-				const FSpeed&      Speed,
-				const FDamage&     Damage)
+				FLocated&           Located,
+				FProjectile&        Projectile,
+				const FMove&        Move,
+				const FSpeed&       Speed,
+				const FDamage&      Damage)
 			{
+				if (Projectile.Time > ProjectileLifetime)
+				{
+					ProjectileHandle.DespawnDeferred();
+					return;
+				}
+				Projectile.Time += DeltaTime;
 				// We use sub-stepping for projectiles cause they move
 				// really fast.
 				for (int i = 0; i < ProjectileSubSteps; ++i)

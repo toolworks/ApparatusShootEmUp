@@ -13,6 +13,14 @@ struct APPARATUSSHOOTEMUP_API FProjectile
  
   public:
 
+	/**
+	 * The projectile's radius.
+	 */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
 	float Radius = 25;
+
+	/**
+	 * The current living time of the projectile.
+	 */
+	float Time = 0;
 };
