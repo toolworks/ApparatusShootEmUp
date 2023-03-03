@@ -145,6 +145,11 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 	static constexpr int32 MaterialUvScaleDataIndex = 3;
 
 	/**
+	 * The index of the opacity data for the projectiles.
+	 */
+	static constexpr int32 ProjectileMaterialOpacityDataIndex = 0;
+
+	/**
 	 * The number of threads for concurrent operations.
 	 */
 	UPROPERTY(EditAnywhere, Category = Performance)
@@ -175,10 +180,10 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 	float Gravity = 200;
 
 	/**
-	 * The maximum lifetime of a projectile.
+	 * The projectile opacity of time.
 	 */
 	UPROPERTY(EditAnywhere, Category = Projectiles)
-	float ProjectileLifetime = 10;
+	FRuntimeFloatCurve ProjectileOpacityByTime;
 
 	/**
 	 * The number of sub-steps for the projectile shooting model.
@@ -278,20 +283,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 			EnemiesCount = AEnemySpawner::GetInstance()->GetEnemiesNum();
 		}
 
-		// General after-spawn initialization.
-		{
-			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpAfterSpawn);
-			static TArray<float> ResetData({0, 0, 1, 1});
-			Mechanism->Operate<FUnsafeChain>(
-			[=](FUnsafeSubjectHandle Subject, const FJustSpawned&, const FRendering& Rendering, const FBubbleSphere BubbleSphere)
-			{
-				ResetData[MaterialUvScaleDataIndex] = BubbleSphere.Radius / 200;
-				Rendering.Owner->SetCustomData(Rendering.InstanceId, ResetData);
-				Subject.RemoveTrait<FJustSpawned>();
-				Subject.SetTrait(FAppearing{});
-				Subject.SetTrait(FMove{});
-			});
-		}
+		
 
 		// Appearance animation.
 		{
@@ -328,15 +320,18 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpShooting);
 			const auto AdditionalStreamsCount = AdditionalShootingStreamByEnemiesCount.Evaluate(EnemiesCount);
-			static const auto Filter = FFilter::Make<FShoot, FShoots, FLocated>().Exclude<FDying>();
+			const float RadiusRatio = 0.5f;
+			static const auto Filter = FFilter::Make<FShoot, FShoots, FLocated, FBubbleSphere>().Exclude<FDying>();
 			Mechanism->Operate<FUnsafeChain>(Filter,
-			[=](FShoots& Shoots, const FShoot& Shoot, const FLocated& Located)
+			[=](FUnsafeSubjectHandle PlayerHandle, FShoots& Shoots, const FShoot& Shoot, const FLocated& Located, const FBubbleSphere& BubbleSphere)
 			{
+				if (Shoot.Direction.IsZero()) return;
+				PlayerHandle.SetTrait(FDirected{Shoot.Direction});
 				if (Shoots.Timeout <= 0)
 				{
 					const auto Projectile = Mechanism->SpawnSubject(Shoot.ProjectileRecord);
 					Projectile.SetTrait(FDirected{Shoot.Direction});
-					Projectile.SetTrait(FLocated{Located});
+					Projectile.SetTrait(FLocated{Located.Location + Shoot.Direction * BubbleSphere.Radius * RadiusRatio});
 					Projectile.SetTrait(FMove{Shoot.Direction});
 					auto DirectionA = Shoot.Direction;
 					auto DirectionB = Shoot.Direction;
@@ -348,11 +343,11 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 						DirectionB = RotatorB.RotateVector(DirectionB);
 						const auto ProjectileA = Mechanism->SpawnSubject(Shoot.ProjectileRecord);
 						ProjectileA.SetTrait(FDirected{DirectionA});
-						ProjectileA.SetTrait(FLocated{Located});
+						ProjectileA.SetTrait(FLocated{Located.Location + DirectionA * BubbleSphere.Radius * RadiusRatio});
 						ProjectileA.SetTrait(FMove{DirectionA});
 						const auto ProjectileB = Mechanism->SpawnSubject(Shoot.ProjectileRecord);
 						ProjectileB.SetTrait(FDirected{DirectionB});
-						ProjectileB.SetTrait(FLocated{Located});
+						ProjectileB.SetTrait(FLocated{Located.Location + DirectionB * BubbleSphere.Radius * RadiusRatio});
 						ProjectileB.SetTrait(FMove{DirectionB});
 					}
 					Shoots.Timeout = Shoots.Interval;
@@ -381,21 +376,26 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 		// Projectile movement and collision detection, enemy death start.
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpProjectilesLogic);
+			const auto Curve = ProjectileOpacityByTime.GetRichCurveConst();
+			const auto Lifetime = Curve->GetLastKey().Time;
 			std::atomic<int32> SafeScore{Score};
 			Mechanism->OperateConcurrently(
 			[&](FSolidSubjectHandle ProjectileHandle,
 				FLocated&           Located,
 				FProjectile&        Projectile,
+				FRendering&         Rendering,
 				const FMove&        Move,
 				const FSpeed&       Speed,
 				const FDamage&      Damage)
 			{
-				if (Projectile.Time > ProjectileLifetime)
+				if (Projectile.Time > Lifetime)
 				{
 					ProjectileHandle.DespawnDeferred();
 					return;
 				}
+				const auto Opacity = Curve->Eval(Projectile.Time);
 				Projectile.Time += DeltaTime;
+				Rendering.Owner->SetCustomDataValue(Rendering.InstanceId, ProjectileMaterialOpacityDataIndex, Opacity);
 				// We use sub-stepping for projectiles cause they move
 				// really fast.
 				for (int i = 0; i < ProjectileSubSteps; ++i)
@@ -408,6 +408,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 						const auto& BubbleSphere = Overlapper.GetTraitRef<FBubbleSphere, EParadigm::Unsafe>();
 						const auto Health = Overlapper.GetTraitPtr<FHealth, EParadigm::Unsafe>();
 						ProjectileHandle->DespawnDeferred();
+						Rendering.Owner->SetCustomDataValue(Rendering.InstanceId, ProjectileMaterialOpacityDataIndex, 0);
 						Health->Value -= Damage.Value;
 						if (Health->Value <= 0)
 						{
@@ -436,12 +437,12 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpBeHit);
 			const auto EndTime = HitEffectCurve->GetLastKey().Time;
-			Mechanism->Operate<FUnsafeChain>(
-			[=](FSubjectHandle    CharacterHandle,
-				const FRendering& Rendering,
-				FLocated&         Located,
-				FHit&             Hit,
-				FSpeed&           Speed)
+			Mechanism->OperateConcurrently(
+			[=](FSolidSubjectHandle CharacterHandle,
+				const FRendering&   Rendering,
+				FLocated&           Located,
+				FHit&               Hit,
+				FSpeed&             Speed)
 			{
 				const auto Value = HitEffectCurve->Eval(Hit.Time);
 				Rendering.Owner->SetCustomDataValue(Rendering.InstanceId, MaterialHitDataIndex, Value);
@@ -452,21 +453,21 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 				Hit.Time += DeltaTime;
 				if (Hit.Time > EndTime)
 				{
-					CharacterHandle.RemoveTrait<FHit>();
+					CharacterHandle.RemoveTraitDeferred<FHit>();
 				}
 				// Cancel the attack...
-				CharacterHandle.RemoveTrait<FAttacking>();
-			});
+				CharacterHandle.RemoveTraitDeferred<FAttacking>();
+			}, ThreadsCount, 32);
 		}
 
 		// The process of a character dying.
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpDying);
 			const auto Curve = DissolutionByTime.GetRichCurveConst();
-			Mechanism->Operate<FUnsafeChain>(
-			[&](FSubjectHandle    CharacterHandle,
-				const FRendering& Rendering,
-				FDying&           Dying)
+			Mechanism->OperateConcurrently(
+			[&](FSolidSubjectHandle CharacterHandle,
+				const FRendering&   Rendering,
+				FDying&             Dying)
 			{
 				const auto Value = Curve->Eval(Dying.Time);
 				const auto Duration = Curve->GetLastKey().Time;
@@ -478,9 +479,9 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 				else
 				{
 					// Perform the actual destruction now...
-					CharacterHandle.Despawn();
+					CharacterHandle.DespawnDeferred();
 				}
-			});
+			}, ThreadsCount, 32);
 		}
 
 		// Decouple
@@ -491,7 +492,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 
 		// Player location sync.
 		{
-			Mechanism->Operate([=](ISolidSubjective* Subjective, const FPlayerTrait& Player, const FLocated& Located)
+			Mechanism->Operate([=](ISolidSubjective* Subjective, const FPlayerTrait& Player, const FLocated& Located, FDirected& Directed)
 			{
 				const auto Actor = CastChecked<APlayerPawn>(Subjective->GetActor());
 				Actor->SetActorLocation(Located.Location);
@@ -555,7 +556,7 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 						if (Enemy.RoamingTimeout < DeltaTime)
 						{
 							Distance = FMath::Sqrt(Distance);
-							Enemy.RoamingTimeout = FMath::RandRange(2.0f, 15.0f);
+							Enemy.RoamingTimeout = FMath::RandRange(2.0f, 15.0f) * (BubbleSphere.Radius / 500);
 							Move.Velocity = FVector(AEnemySpawner::VRand2D(), 0.0f) + Delta * (RoamingToTargetCurve->Eval(EnemiesCount) / Distance);
 							if (!Move.Velocity.Normalize())
 							{
@@ -701,7 +702,21 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ShootEmUpUpdateRenderState);
-			EnemySpawner->UpdateRenderState();
+			EnemySpawner->UpdateRenderState([&]()
+			// General after-spawn initialization.
+			{
+				SCOPE_CYCLE_COUNTER(STAT_ShootEmUpAfterSpawn);
+				static TArray<float> ResetData({0, 0, 1, 1});
+				Mechanism->Operate<FUnsafeChain>(
+				[=](FUnsafeSubjectHandle Subject, const FJustSpawned&, const FRendering& Rendering, const FBubbleSphere BubbleSphere)
+				{
+					ResetData[MaterialUvScaleDataIndex] = BubbleSphere.Radius / 200;
+					Rendering.Owner->SetCustomData(Rendering.InstanceId, ResetData);
+					Subject.RemoveTrait<FJustSpawned>();
+					Subject.SetTrait(FAppearing{});
+					Subject.SetTrait(FMove{});
+				});
+			});
 		}
 	}
 
