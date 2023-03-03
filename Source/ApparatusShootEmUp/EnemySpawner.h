@@ -303,7 +303,7 @@ class APPARATUSSHOOTEMUP_API AEnemySpawner
 		return Result * (1.0f / FMath::Sqrt(Length));
 	}
 
-	void UpdateRenderState()
+	void UpdateRenderState(std::function<void(void)> UpdatedCallback)
 	{
 		for (int32 BatchedSoFar = 0, TotalHandled = 0; BatchedSoFar < BatchSizeMax && TotalHandled < BatchTypes.Num(); CurrentBatchIndex += 1, TotalHandled += 1)
 		{
@@ -314,6 +314,7 @@ class APPARATUSSHOOTEMUP_API AEnemySpawner
 			const auto BatchType = BatchTypes[CurrentBatchIndex];
 			const auto Renderer = UTraitRendererComponent::GetInstance(BatchType);
 			Renderer->Update();
+			UpdatedCallback();
 			Renderer->UpdateRenderState();
 			BatchedSoFar += Renderer->GetNumRenderInstances();
 		}
