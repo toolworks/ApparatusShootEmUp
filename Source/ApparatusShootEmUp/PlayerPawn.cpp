@@ -40,7 +40,7 @@ APlayerPawn::Tick(float DeltaSeconds)
 	if (Spawner == nullptr) return;
 	const auto EnemiesCount = Spawner->GetEnemiesNum();
 	const auto RelativeLocation = ZoomScaleByEnemiesCount.GetRichCurveConst()->Eval(EnemiesCount) * OriginalCameraRelativeLocation;
-	CameraComponent->SetRelativeLocation(RelativeLocation);
+	CameraComponent->SetRelativeLocation(FMath::Lerp(CameraComponent->GetRelativeLocation(), RelativeLocation, DeltaSeconds));
 }
 
 void
