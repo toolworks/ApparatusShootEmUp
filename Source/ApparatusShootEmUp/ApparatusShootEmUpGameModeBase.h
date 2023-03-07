@@ -156,6 +156,12 @@ class APPARATUSSHOOTEMUP_API AApparatusShootEmUpGameModeBase
 	int32 ThreadsCount = 4;
 
 	/**
+	 * The number of entities to batch as part of a separate thread.
+	 */
+	UPROPERTY(EditAnywhere, Category = Performance)
+	int32 BaseBatchSize = 128;
+
+	/**
 	 * The amount of dissolution by time.
 	 */
 	UPROPERTY(EditAnywhere, Category = Effects)

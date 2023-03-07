@@ -38,8 +38,8 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 		SCOPE_CYCLE_COUNTER(STAT_ShootEmUpAppearance);
 		const auto Curve = AppearanceDissolutionByTime.GetRichCurveConst();
 		const auto EndTime = Curve->GetLastKey().Time;
-		Mechanism->Operate<FUnsafeChain>(
-		[=](FUnsafeSubjectHandle Subject, FAppearing& Appearing, const FRendering& Rendering)
+		Mechanism->OperateConcurrently(
+		[=](FSolidSubjectHandle Subject, FAppearing& Appearing, const FRendering& Rendering)
 		{
 			const auto Value = Curve->Eval(Appearing.Time);
 			Rendering.Owner->SetCustomDataValue(Rendering.InstanceId, MaterialDissolveDataIndex, Value);
@@ -47,9 +47,9 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 			if (Appearing.Time >= EndTime)
 			{
 				Rendering.Owner->SetCustomDataValue(Rendering.InstanceId, MaterialDissolveDataIndex, 0);
-				Subject.RemoveTrait<FAppearing>();
+				Subject.RemoveTraitDeferred<FAppearing>();
 			}
-		});
+		}, ThreadsCount, BaseBatchSize);
 	}
 
 	// Shooting intervals.
@@ -119,7 +119,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 			{
 				Located.Location += Move.Velocity * DeltaTime;
 			}
-		}, ThreadsCount, 32);
+		}, ThreadsCount, BaseBatchSize);
 	}
 
 	// Projectile movement and collision detection, enemy death start.
@@ -179,7 +179,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 					// so we don't break the overlappers loop here.
 				}
 			}
-		}, ThreadsCount, 32);
+		}, ThreadsCount, BaseBatchSize);
 		Score = SafeScore.load(std::memory_order_relaxed);
 	}
 	
@@ -208,7 +208,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 			}
 			// Cancel the attack...
 			CharacterHandle.RemoveTraitDeferred<FAttacking>();
-		}, ThreadsCount, 32);
+		}, ThreadsCount, BaseBatchSize);
 	}
 
 	// The process of a character dying.
@@ -233,7 +233,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 				// Perform the actual destruction now...
 				CharacterHandle.DespawnDeferred();
 			}
-		}, ThreadsCount, 32);
+		}, ThreadsCount, BaseBatchSize);
 	}
 
 	// Decouple
@@ -244,7 +244,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 
 	// Player location sync.
 	{
-		Mechanism->Operate([=](ISolidSubjective* Subjective, const FPlayerTrait& Player, const FLocated& Located, FDirected& Directed)
+		Mechanism->Operate([=](ISolidSubjective* Subjective, const FPlayerTrait& Player, const FLocated& Located)
 		{
 			const auto Actor = CastChecked<APlayerPawn>(Subjective->GetActor());
 			Actor->SetActorLocation(Located.Location);
@@ -324,7 +324,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 
 				// Perform enemy movement right here for performance reasons:
 				Located.Location += Move.Velocity * Speed.Value * DeltaTime;
-			}, ThreadsCount, 32);
+			}, ThreadsCount, BaseBatchSize);
 		}
 		else
 		{
@@ -353,7 +353,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 				}
 				// Perform enemy movement right here for performance reasons:
 				Located.Location += Move.Velocity * Speed.Value * DeltaTime;
-			}, ThreadsCount, 32);
+			}, ThreadsCount, BaseBatchSize);
 		}
 		for (int32 i = 0; i < EnemySpawner->EnemyCountsByKind.Num(); ++i)
 		{
@@ -451,7 +451,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 			{
 				Located.Location.Z = BubbleSphere.Radius;
 			}
-		}, ThreadsCount, 32);
+		}, ThreadsCount, BaseBatchSize);
 	}
 
 	{
