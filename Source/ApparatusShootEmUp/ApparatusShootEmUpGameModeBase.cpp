@@ -275,6 +275,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 				const FRendering&    Rendering,
 				const FSpeed&        Speed,
 				FMove&               Move,
+				FDirected&           Directed,
 				FEnemy&              Enemy,
 				FLocated&            Located,
 				const FBubbleSphere& BubbleSphere,
@@ -321,7 +322,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 						Enemy.RoamingTimeout -= DeltaTime;
 					}
 				}
-
+				Directed.Direction = FMath::Lerp(Directed.Direction, Move.Velocity, DeltaTime * 4);
 				// Perform enemy movement right here for performance reasons:
 				Located.Location += Move.Velocity * Speed.Value * DeltaTime;
 			}, ThreadsCount, BaseBatchSize);
@@ -335,6 +336,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 				const FRendering&    Rendering,
 				const FSpeed&        Speed,
 				FMove&               Move,
+				FDirected&           Directed,
 				FEnemy&              Enemy,
 				FLocated&            Located,
 				const FBubbleSphere& BubbleSphere,
@@ -351,6 +353,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 				{
 					Enemy.RoamingTimeout -= DeltaTime;
 				}
+				Directed.Direction = FMath::Lerp(Directed.Direction, Move.Velocity, DeltaTime * 4);
 				// Perform enemy movement right here for performance reasons:
 				Located.Location += Move.Velocity * Speed.Value * DeltaTime;
 			}, ThreadsCount, BaseBatchSize);

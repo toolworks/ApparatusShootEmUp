@@ -1,5 +1,7 @@
 #include "EnemySpawner.h"
 
+#include "Directed.h"
+
 
 AEnemySpawner* AEnemySpawner::Instance = nullptr;
 
@@ -77,10 +79,11 @@ AEnemySpawner::Tick(float DeltaTime)
 				Enemy.SetTrait(FLocated(SpawnPoint2D));
 				Enemy.SetTrait(FJustSpawned());
 				// Random rotation for variation sake:
-				Enemy.SetTrait(FRotated(FRotator(FMath::FRandRange(-180.f, 180.f),
-												 FMath::FRandRange(-180.f, 180.f),
-												 FMath::FRandRange(-180.f, 180.f)).Quaternion()));
-				Enemy.ObtainTrait(BatchTypes[(SpawnId++) % BatchTypes.Num()]);
+				Enemy.SetTrait(FDirected{FMath::VRand()});
+				if (Enemy.HasTrait<FRenderBatched>())
+				{
+					Enemy.ObtainTrait(BatchTypes[(SpawnId++) % BatchTypes.Num()]);
+				}
 				EnemyBudget -= Config.Cost;
 				break; // The enemy was spawned successfully.
 			}
