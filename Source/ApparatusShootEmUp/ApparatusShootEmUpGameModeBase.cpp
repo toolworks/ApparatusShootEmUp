@@ -441,10 +441,8 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 	// Gravity.
 	{
 		SCOPE_CYCLE_COUNTER(STAT_ShootEmUpGravity);
-		const auto Applicator = Mechanism->CreateDeferredsApplicator();
-		static const auto Filter = FFilter::Make<FLocated, FBubbleSphere>();
-		Mechanism->OperateConcurrently(Filter,
-		[&](FSolidSubjectHandle Subject, FLocated& Located, const FBubbleSphere& BubbleSphere)
+		Mechanism->OperateConcurrently(
+		[&](FLocated& Located, const FBubbleSphere& BubbleSphere)
 		{
 			if (Located.Location.Z > BubbleSphere.Radius)
 			{
