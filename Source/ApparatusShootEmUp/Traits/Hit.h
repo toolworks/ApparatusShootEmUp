@@ -23,5 +23,5 @@ struct APPARATUSSHOOTEMUP_API FHit
 	 * The velocity to knock back with.
 	 */
 	UPROPERTY(BlueprintReadWrite, EditAnywhere)
-	FVector Velocity;
+	FVector Velocity = FVector::ZeroVector;
 };
