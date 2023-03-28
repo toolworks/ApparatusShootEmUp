@@ -1,3 +1,6 @@
 [submodule "Plugins/Apparatist"]
 	path = Plugins/Apparatist
 	url = git@github.com:toolworks/Apparatist.git
+[submodule "Plugins/ApparatusStateTree"]
+	path = Plugins/StateTreeApparatist
+	url = git@github.com:toolworks/StateTreeApparatist.git

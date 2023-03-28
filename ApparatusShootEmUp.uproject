@@ -19,6 +19,10 @@
 		{
 			"Name": "Apparatist",
 			"Enabled": true
+		},
+		{
+			"Name": "StateTreeApparatist",
+			"Enabled": true
 		}
 	]
 }
