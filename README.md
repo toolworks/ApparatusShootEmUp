@@ -10,7 +10,7 @@ Apparatus ECS technology demo and Unreal Engine 5 stress test.
 
 Make sure you're cloning this repository **including** the submodules involved like so:
 ```cmd
-git clone --recurse-submodules https://github.com/cameronmcnz/surface.git 
+git clone --recurse-submodules git@github.com:toolworks/ApparatusShootEmUp.git
 ```
 
 ## Builds
