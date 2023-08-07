@@ -15,6 +15,10 @@
 			"Name": "Apparatus",
 			"Enabled": true,
 			"MarketplaceURL": "com.epicgames.launcher://ue/marketplace/product/66d674e3675f44c1a1e619de8adcef71"
+		},
+		{
+			"Name": "Apparatist",
+			"Enabled": true
 		}
 	]
 }
