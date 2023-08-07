@@ -80,3 +80,6 @@ DerivedDataCache/*
 
 # Ignore the Apparatus as it should be Engine-installed on the clients
 Plugins/Apparatus
+
+# VSCode Local History
+.history/*
