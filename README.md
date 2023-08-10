@@ -12,6 +12,10 @@ Make sure you're cloning this repository **including** the submodules involved l
 ```cmd
 git clone --recurse-submodules git@github.com:toolworks/ApparatusShootEmUp.git
 ```
+or via HTTPS:
+```cmd
+git clone --recurse-submodules https://github.com/toolworks/ApparatusShootEmUp.git
+```
 
 ## Builds
 
