@@ -83,3 +83,6 @@ Plugins/Apparatus
 
 # VSCode Local History
 .history/*
+
+# IDEA/Rider Project Files
+.idea/
