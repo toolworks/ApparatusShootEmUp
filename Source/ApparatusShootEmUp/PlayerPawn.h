@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/Character.h"
+#include "Curves/CurveFloat.h"
 
 #include "SubjectiveActorComponent.h"
 
