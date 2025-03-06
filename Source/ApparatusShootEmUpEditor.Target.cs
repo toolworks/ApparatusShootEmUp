@@ -8,7 +8,7 @@ public class ApparatusShootEmUpEditorTarget : TargetRules
 	public ApparatusShootEmUpEditorTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Editor;
-		DefaultBuildSettings = BuildSettingsVersion.V2;
+		DefaultBuildSettings = BuildSettingsVersion.V5;
 
 		ExtraModuleNames.AddRange( new string[] { "ApparatusShootEmUp", "ApparatusEditor", "ApparatistEditor" } );
 	}
