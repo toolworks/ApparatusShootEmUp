@@ -71,7 +71,7 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 		const float RadiusRatio = 0.5f;
 		static const auto Filter = FFilter::Make<FShoot, FShoots, FLocated, FBubbleSphere>().Exclude<FDying>();
 		Mechanism->Operate<FUnsafeChain>(Filter,
-		[=](FUnsafeSubjectHandle PlayerHandle, FShoots& Shoots, const FShoot& Shoot, const FLocated& Located, const FBubbleSphere& BubbleSphere)
+		[=, this](FUnsafeSubjectHandle PlayerHandle, FShoots& Shoots, const FShoot& Shoot, const FLocated& Located, const FBubbleSphere& BubbleSphere)
 		{
 			if (Shoot.Direction.IsZero()) return;
 			PlayerHandle.SetTrait(FDirected{Shoot.Direction});
@@ -83,8 +83,8 @@ AApparatusShootEmUpGameModeBase::Tick(float DeltaTime)
 				Projectile.SetTrait(FMove{Shoot.Direction});
 				auto DirectionA = Shoot.Direction;
 				auto DirectionB = Shoot.Direction;
-				const auto RotatorA = FQuat(FVector::UpVector, FMath::DegreesToRadians(+AdditionalShootingStreamAngle));
-				const auto RotatorB = FQuat(FVector::UpVector, FMath::DegreesToRadians(-AdditionalShootingStreamAngle));
+				const auto RotatorA = FQuat(FVector::UpVector, FMath::DegreesToRadians(+this->AdditionalShootingStreamAngle));
+				const auto RotatorB = FQuat(FVector::UpVector, FMath::DegreesToRadians(-this->AdditionalShootingStreamAngle));
 				for (int i = 0; i < AdditionalStreamsCount; ++i)
 				{
 					DirectionA = RotatorA.RotateVector(DirectionA);
