@@ -1,4 +1,5 @@
 /.git
+/.history
 /.vs
 /.vscode
 /Builds
@@ -6,6 +7,7 @@
 /DerivedDataCache
 /Intermediate
 /Platforms
+/Plugins.Backup
 /Saved
 /Script
 /Plugins/Apparatist/Intermediate
