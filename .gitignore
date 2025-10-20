@@ -3,6 +3,9 @@
 .vscode/
 .clangd/
 
+# Rider Project
+.idea
+
 # Compiled Object files
 *.slo
 *.lo
@@ -83,3 +86,9 @@ Plugins/Apparatus
 
 # VSCode Local History
 .history/*
+
+# Optional Rider Plugin
+Plugins/Developer/RiderLink
+
+# Clang Compilation State
+.clangd

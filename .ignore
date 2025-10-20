@@ -1,5 +1,6 @@
 /.git
 /.history
+/.idea
 /.vs
 /.vscode
 /Builds
@@ -15,3 +16,4 @@
 /Plugins/Apparatus/Docs
 /Plugins/Apparatus/Docs.Src
 /Plugins/Apparatus/Intermediate
+/Plugins/Developer/RiderLink/Intermediate
