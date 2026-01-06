@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.5",
+	"EngineAssociation": "5.6",
 	"Category": "Templates",
 	"Description": "A dedicated Apparatus sample project of a shoot'em'up-like experience.",
 	"Modules": [
