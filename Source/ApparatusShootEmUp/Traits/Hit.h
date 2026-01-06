@@ -1,8 +1,10 @@
 #pragma once
  
 #include "CoreMinimal.h"
+#include "Math/Vector.h"
+
 #include "Hit.generated.h"
- 
+
 /**
  * The state of being hit by a projectile.
  */

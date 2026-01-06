@@ -1,6 +1,7 @@
 #pragma once
  
 #include "CoreMinimal.h"
+
 #include "PlayerTrait.generated.h"
  
 /**
@@ -10,6 +11,6 @@ USTRUCT(BlueprintType)
 struct APPARATUSSHOOTEMUP_API FPlayerTrait
 {
 	GENERATED_BODY()
- 
+
   public:
 };

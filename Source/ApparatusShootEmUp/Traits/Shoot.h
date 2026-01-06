@@ -3,6 +3,8 @@
 #include "CoreMinimal.h"
 #include "Math/Vector.h"
 
+#include "SubjectRecord.h"
+
 #include "Shoot.generated.h"
 
 
